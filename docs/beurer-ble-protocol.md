@@ -694,6 +694,20 @@ zeros) and with or without a pulse.
 **Display vs. frames.** Weight, BMI, water, muscle and pulse matched the display.
 Body fat differed once: 18.4 % in 2A9C, 18.2 % on the display. [verify]
 
+**User list (FFF1).** Works without consent, 13-byte entries as on the other
+Wi-Fi models (e.g. `00 01 ff ff ff <year> <m> <d> <cm> 00 <gender> <activity>`),
+but the end marker is **20 bytes**: `01` followed by 19 × `ff`.
+
+**Advertising.** As on the BF450, the pending-slot list is only in the scan
+response, but under `0x181D` in normal byte order (`04 16 1d 18 01`). The
+advertisement lists 0x181B as service UUID and has manufacturer data for company
+`0x0611`: `00 00 04` and the address reversed.
+
+**Bonding through an ESPHome proxy.** With ESPHome's default
+`esp32_ble: io_capability: none` bonding fails with "Pairing failed due to error:
+80" (SMP authentication failure). With `io_capability: keyboard_display` it bonds
+in ~1.3 s, without any passkey prompt. BlueZ behaves the same: a
+NoInputNoOutput agent fails, a KeyboardDisplay agent bonds (Just Works).
+
 **Not verified:** factory reset (the app writes FFCF/FFC2; FFF7 is a measurement
-characteristic here, so the integration offers no reset), the user list on FFF1,
-the pending-slot list in the scan response.
+characteristic here, so the integration offers no reset).
