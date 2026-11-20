@@ -15,7 +15,7 @@ The integration supports the BF600 family of Beurer scales.
 | Verified | BF450, BF451 |
 | Untested | BF105, BF1000, BF405, BF500, BF600, BF720, BF722, BF850, BF880, BF915, BF950, BF980, BF990, GS435, SRBF1 |
 
-Home Assistant discovers untested models too, and setup warns you that the model hasn't been tested. Each model only gets the sensors it actually measures (the GS435, for example, only measures weight). Known gaps: the BF990's extra body-composition frames aren't decoded yet, and the firmware workaround for the "108.8 kg" weight error of the BF720, BF722 and BF950 isn't implemented. The BF700/BF710 family isn't supported.
+Home Assistant discovers untested models too, and setup warns you that the model hasn't been tested. Each model only gets the sensors it actually measures (the GS435, for example, only measures weight). Known gaps: the firmware workaround for the "108.8 kg" weight error of the BF720, BF722 and BF950 isn't implemented. The BF700/BF710 family isn't supported.
 
 ## Requirements
 

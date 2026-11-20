@@ -189,6 +189,6 @@ def decode_weight_frame(frame: bytes) -> WeightFrame:
         timestamp=timestamp,
         slot=frame[10],
         bmi=round(int.from_bytes(frame[11:13], "little") * 0.1, 1),
-        # Raw cm on the BF450 (§9.3).
+        # Raw cm on the BF450 (§9.3), but mm on the BF990 (§9.7); unused.
         height_cm=int.from_bytes(frame[13:15], "little"),
     )

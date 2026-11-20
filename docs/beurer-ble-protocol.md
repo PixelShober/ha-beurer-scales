@@ -319,7 +319,7 @@ then settled on `U-2`. [verify] other values.
 - **Analysis fat 0x0009** (BF1000), 12 bytes, `[0]==0x7E`: visceral, leftArm, rightArm, leftLeg, rightLeg, torso (× 0.1).
 - **Analysis muscle 0x000A** (BF1000), 11 bytes, `[0]==0x3E`: leftArm, rightArm, leftLeg, rightLeg, torso (× 0.1).
 - **Heart-rate frame FFF5** (BF500/880/980), 6 bytes: pulse at [1..2] (0xFF = absent), metabolic age [5], visceral [3..4] × 0.1.
-- **BF990**: 20-byte frames on FFF5/FFF7/FFF8 (heart-rate-extended: metabolicAge, pulse, visceral, bmr, amr, boneMass, leanBodyMass, proteinMass, totalMuscleMass, water%; full-body segmental fat/muscle ×10 values; "unknown measurement"). Not decoded byte-by-byte yet.
+- **BF990**: FFF5 heart-rate-extended (20 B), FFF7 full-body segmental analysis (20 B), FFF8 measurement status (6 B). Layouts from `initDeviceListenerWithFullAnalysisBF990` (app 1.22.1), verified on a BF990, see §9.7.
 
 ### 5.5 Unified app model (`jq.h`, `WeightMeasurement.kt`)
 `weight, boneWeight, bodyWaterPercentage, muscleMassPercentage, bodyFatPercentage, amr,
@@ -654,3 +654,46 @@ requires a connection, and the scale ends an unbonded link after ~0.5 s.
 **Display.** After the reset, before any scale user existed, a weigh-in showed only the
 weight. With a scale user and its profile, the display shows `U-n` and the full body
 composition.
+
+### 9.7 BF990 (2026-11-20)
+
+Setup: one BF990, firmware V02.13, laptop BlueZ + bleak 3.0.2. No Beurer app or
+cloud involved. Byte layouts come from the app's
+`BTScaleBF600MeasurementListenerRepoImpl.initDeviceListenerWithFullAnalysisBF990`
+(HealthManager Pro 1.22.1) and were checked against the scale's display. Values
+below are anonymised as in §9.3.
+
+**Bonding and users.** Just Works bonding, no passkey. UCP register `01 lo hi` →
+`20 01 01 01` (slot 1), consent `02 01 lo hi` → `20 02 01`. Profile writes as on
+the BF450: DOB 2A85, gender 2A8C, Height 2A8E `[cm, 0]`, activity FFF2, 2A99
+`01 00 00 00`; all read back unchanged. Another project reports a wrong code
+answered with `20 02 05` (USER_NOT_AUTHORIZED) instead of the BF450's `04`.
+
+**Frames.** After consent, stored readings arrive **newest first**, five frames
+each, ~0.3 s apart: 2A9D → 2A9C → FFF5 → FFF7 → FFF8. A live reading is pushed
+the same way, followed by FFF4 `01`.
+
+- **2A9D**: flags `0e` (BF450: `02`); height at 13..14 is in **mm**.
+- **2A9C**: soft lean and water mass × 0.005 kg (soft lean = LBM − bone holds).
+- **FFF5** (20 B): 0 `0e`; 1..2 pulse (`ff ff` = none); 3..4 visceral × 0.1;
+  5 metabolic age; 6..7 BMR kJ; 8..9 AMR kJ; 10..11 bone, 12..13 LBM, 14..15
+  protein, 16..17 total muscle (all × 0.005 kg); 18..19 water × 0.1 %.
+  The decoded pulse matched the display.
+- **FFF7** (20 B): ten int16 × 0.1 %: fat of left leg, right leg, left arm, right
+  arm, torso, then muscle in the same order. The app only uses it when bytes 0
+  and 10 are non-zero.
+- **FFF8** (6 B): 0..1 impedance in Ω (= 2A9C impedance ÷ 10), 2..3 a second
+  impedance (meaning unconfirmed), 4..5 > 0 = unknown measurement (the app's
+  `isUnknownMeasurement`), treated like custom1 byte 4 (ADR 0006).
+
+**Partial weigh-ins.** Without skin contact the scale stores weight only: 2A9C
+has just BMR, FFF5 just BMR/AMR and `ff ff` for the pulse, FFF7 and FFF8 are all
+zeros. A weigh-in can also have bioimpedance but no segmental analysis (FFF7
+zeros) and with or without a pulse.
+
+**Display vs. frames.** Weight, BMI, water, muscle and pulse matched the display.
+Body fat differed once: 18.4 % in 2A9C, 18.2 % on the display. [verify]
+
+**Not verified:** factory reset (the app writes FFCF/FFC2; FFF7 is a measurement
+characteristic here, so the integration offers no reset), the user list on FFF1,
+the pending-slot list in the scan response.
