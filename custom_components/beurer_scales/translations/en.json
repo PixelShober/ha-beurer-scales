@@ -193,6 +193,11 @@
     }
   },
   "entity": {
+    "binary_sensor": {
+      "awake": {
+        "name": "Awake"
+      }
+    },
     "sensor": {
       "last_sync": {
         "name": "Last sync"

@@ -50,6 +50,7 @@ from homeassistant.config_entries import ConfigEntry, ConfigSubentry
 from homeassistant.const import CONF_ADDRESS
 from homeassistant.core import CALLBACK_TYPE, HomeAssistant, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
+from homeassistant.helpers.event import async_call_later
 from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 
@@ -105,7 +106,7 @@ from .repairs import (
     async_scale_user_issue,
 )
 from .unrecognised import async_notify_unrecognised
-from .wake import Wake, WakeTracker
+from .wake import WAKE_GAP, Wake, WakeTracker
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -130,6 +131,10 @@ ACTIVE_SCAN_WINDOW = 35.0
 # Wakes in a row that reached `WEIGH_IN_FINAL_DELAY` without any scan response
 # before a repair issue names the passive scanning path (#22).
 NO_SCAN_RESPONSE_WAKES = 3
+
+# The Awake binary sensor turns off this long after the scale's last
+# advertisement or HA's last session with it.
+AWAKE_OFF_DELAY = WAKE_GAP
 
 _HANDOVER = "handover"
 
@@ -228,6 +233,11 @@ class ScaleCoordinator:
         self.model = model_by_name(entry.data[CONF_MODEL])
         self.subentries_at_setup = subentries_snapshot(entry)
         self.battery_percent: int | None = None
+        # Whether the scale is awake (someone tapped or stepped on it), for the
+        # Awake binary sensor. Unlike a `Wake`, it stays on through HA's own
+        # sessions and the advertising after them.
+        self.awake = False
+        self._cancel_awake_off: CALLBACK_TYPE | None = None
         self.last_sync: datetime | None = None
         self._latest: dict[int, Reading] = {}
         self._listeners: list[CALLBACK_TYPE] = []
@@ -301,6 +311,9 @@ class ScaleCoordinator:
             session_ended_signal(self.address),
             self.wakes.async_disconnected,
         )
+        stop_awake = async_dispatcher_connect(
+            self.hass, session_ended_signal(self.address), self._async_seen_awake
+        )
 
         stop_garmin = self.garmin.async_start()
 
@@ -308,8 +321,12 @@ class ScaleCoordinator:
         def stop() -> None:
             stop_watching()
             stop_listening()
+            stop_awake()
             stop_garmin()
             self.wakes.async_stop()
+            if self._cancel_awake_off is not None:
+                self._cancel_awake_off()
+                self._cancel_awake_off = None
 
         return stop
 
@@ -427,6 +444,7 @@ class ScaleCoordinator:
     @callback
     def _async_on_advertisement(self, info: BluetoothServiceInfoBleak) -> None:
         wake = self.wakes.async_advertisement()
+        self._async_seen_awake()
         self._async_log_advertisement(info, wake.elapsed)
         pending = pending_slots(info)
         appended: list[int] = []
@@ -628,6 +646,32 @@ class ScaleCoordinator:
         """How far into the current wake we are, for the logs."""
         wake = self.wakes.current
         return f"{wake.elapsed:.1f} s into the wake" if wake else "no wake"
+
+    # --- The Awake binary sensor ---
+
+    @callback
+    def _async_seen_awake(self) -> None:
+        """The scale advertised, or HA's session with it ended: it is awake."""
+        if self._cancel_awake_off is not None:
+            self._cancel_awake_off()
+        self._cancel_awake_off = async_call_later(
+            self.hass, AWAKE_OFF_DELAY, self._async_awake_timeout
+        )
+        if not self.awake:
+            self.awake = True
+            self._async_update_listeners()
+
+    @callback
+    def _async_awake_timeout(self, _now: datetime) -> None:
+        self._cancel_awake_off = None
+        if async_scale_held(self.hass, self.address):
+            # A session keeps the scale awake without it advertising.
+            self._cancel_awake_off = async_call_later(
+                self.hass, AWAKE_OFF_DELAY, self._async_awake_timeout
+            )
+            return
+        self.awake = False
+        self._async_update_listeners()
 
     @callback
     def _async_update_listeners(self) -> None:

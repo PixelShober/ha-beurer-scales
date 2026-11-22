@@ -37,7 +37,7 @@ Home Assistant discovers untested models too, and setup warns you that the model
 
 Step on the scale once. Home Assistant discovers it and offers to set it up; confirm it. You can also add it under **Settings → Devices & services → Add integration → Beurer Scales**, which lists the Beurer scales Home Assistant has seen nearby.
 
-Setting up the scale doesn't connect to it, so the scale doesn't need to be awake. The scale gets its own device with a **Battery** sensor and a **Last sync** sensor and a **Pending deletions** sensor (both diagnostic). Then add scale users.
+Setting up the scale doesn't connect to it, so the scale doesn't need to be awake. The scale gets its own device with a **Battery** sensor, an **Awake** binary sensor, and a **Last sync** sensor and a **Pending deletions** sensor (both diagnostic). **Awake** turns on as soon as someone taps or steps on the scale, before the weigh-in is final and before anyone is recognised, and off once the scale has been silent for about 10 s; use it to start a routine when someone steps on. Then add scale users.
 
 ## Scale users
 
