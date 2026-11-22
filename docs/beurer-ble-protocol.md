@@ -692,7 +692,9 @@ zeros. A weigh-in can also have bioimpedance but no segmental analysis (FFF7
 zeros) and with or without a pulse.
 
 **Display vs. frames.** Weight, BMI, water, muscle and pulse matched the display.
-Body fat differed once: 18.4 % in 2A9C, 18.2 % on the display. [verify]
+Body fat differed once (18.4 % in 2A9C, 18.2 % on the display); a later
+weigh-in matched exactly. Through Home Assistant and an ESPHome proxy
+(2026-11-22), a weigh-in synced on its own and every metric matched the display.
 
 **User list (FFF1).** Works without consent, 13-byte entries as on the other
 Wi-Fi models (e.g. `00 01 ff ff ff <year> <m> <d> <cm> 00 <gender> <activity>`),
