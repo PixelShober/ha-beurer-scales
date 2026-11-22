@@ -186,6 +186,12 @@ def test_slot_count(name: str, slots: int) -> None:
     assert model_by_name(name).slot_count == slots
 
 
+def test_the_bf990_syncs_earlier_slots_before_it_falls_asleep() -> None:
+    """It stops advertising ~10 s after a tap, so the 25 s wait is too long (§9.7)."""
+    assert model_by_name("BF990").weigh_in_final_delay < 10
+    assert {m.name for m in MODELS if m.weigh_in_final_delay != 25.0} == {"BF990"}
+
+
 def test_the_bf990_offers_no_factory_reset() -> None:
     """Its FFF7 is the segmental frame; the app resets it elsewhere (§4)."""
     assert model_by_name("BF990").factory_reset_uuid is None

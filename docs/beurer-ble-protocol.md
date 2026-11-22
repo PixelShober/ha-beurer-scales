@@ -703,6 +703,14 @@ response, but under `0x181D` in normal byte order (`04 16 1d 18 01`). The
 advertisement lists 0x181B as service UUID and has manufacturer data for company
 `0x0611`: `00 00 04` and the address reversed.
 
+**Wake window.** Much shorter than the BF450's 25–47 s: after a tap the
+scale advertised for ~10 s, after a weigh-in for ~15 s (through an ESPHome
+proxy). When a slot was already pending before the wake, HA can't tell from
+the slot list that the weigh-in is final and waits `weigh_in_final_delay`;
+the BF450's 25 s would miss the BF990 every time, so it waits 7 s. Connecting
+then may cut into a weigh-in still in progress (V7); consenting the person on
+the scale lets it complete live.
+
 **Bonding through an ESPHome proxy.** With ESPHome's default
 `esp32_ble: io_capability: none` bonding fails with "Pairing failed due to error:
 80" (SMP authentication failure). With `io_capability: keyboard_display` it bonds

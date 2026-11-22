@@ -114,7 +114,8 @@ _LOGGER = logging.getLogger(__name__)
 RETRY_DELAY = 15.0
 # A wake that lists only slots pending before it is probably a weigh-in still in
 # progress: connecting would abort it. The scale appends its slot 4–10 s after
-# stepping on; wait this long for that (ADR 0008, V7).
+# stepping on; wait this long for that (ADR 0008, V7). Models that fall asleep
+# sooner set their own `ScaleModel.weigh_in_final_delay`.
 WEIGH_IN_FINAL_DELAY = 25.0
 
 # Wakes with a deletion still pending before a repair issue is raised (#29).
@@ -657,7 +658,7 @@ class ScaleCoordinator:
         # One moment per wake for the sync of slots pending before it, the
         # pending deletions and the user-list check, so they share one
         # connection.
-        wake.async_call_at(WEIGH_IN_FINAL_DELAY, self._async_after_weigh_in)
+        wake.async_call_at(self.model.weigh_in_final_delay, self._async_after_weigh_in)
 
     @callback
     def _async_count_deletion_wake(self) -> None:

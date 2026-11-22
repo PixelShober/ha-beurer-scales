@@ -189,6 +189,11 @@ class ScaleModel:
     # `[cm, 0]`, and its own Database Change Increment value.
     one_byte_height: bool = False
     database_change_increment: bytes = DATABASE_CHANGE_INCREMENT
+    # How long into a wake HA waits before syncing slots that were pending
+    # before it (ADR 0008). It must end well before the scale stops
+    # advertising: the BF450 advertises for 25–47 s, the BF990 only ~10 s
+    # after a tap and ~15 s after a weigh-in (§9.7).
+    weigh_in_final_delay: float = 25.0
 
     @property
     def reading_uuids(self) -> tuple[str, ...]:
@@ -295,6 +300,7 @@ MODELS: tuple[ScaleModel, ...] = (
         _GATT_FFF1,
         _WIFI,
         factory_reset_uuid=None,
+        weigh_in_final_delay=7.0,
         reading_frames=(
             *_STANDARD_FRAMES,
             (CUSTOM1_UUID, FrameKind.HEART_RATE_EXTENDED),
